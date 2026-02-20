@@ -40,6 +40,7 @@ const PostDetail = () => {
   const [activeReaction, setActiveReaction] = useState<string | null>(null);
   const hasTrackedRead = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const hasRewardedForReaction = useRef(false);
   const [blurred, setBlurred] = useState(false);
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
   const [newComment, setNewComment] = useState('');
@@ -48,6 +49,68 @@ const PostDetail = () => {
     if (!post) return [];
     return MOCK_POSTS.filter(p => p.category === post.category && p.id !== post.id).slice(0, 3);
   }, [post]);
+
+  const maxScroll = useRef(0);
+  const startTime = useRef(Date.now());
+
+  // 1. Passive Scroll Tracker
+  // Only tracks how far down the user has scrolled, does NOT trigger rewards directly.
+  useEffect(() => {
+    if (!post) return;
+    
+    // Reset start time when post changes
+    startTime.current = Date.now();
+    maxScroll.current = 0;
+    hasTrackedRead.current = false;
+
+    const handleScroll = () => {
+      if (!contentRef.current) return;
+      const rect = contentRef.current.getBoundingClientRect();
+      const totalHeight = contentRef.current.scrollHeight;
+      const scrollDepth = Math.min(1, (window.innerHeight - rect.top) / totalHeight);
+      
+      // Keep track of their deepest scroll point
+      if (scrollDepth > maxScroll.current) {
+        maxScroll.current = scrollDepth;
+      }
+
+      // Soft-gate logic remains instant
+      if (post.isPremium && scrollDepth > 0.5) {
+        setBlurred(true);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [post]);
+
+  // 2. Behavioral Read Verification Engine (HARD MODE)
+  useEffect(() => {
+    if (!post) return;
+    
+    const verificationTimer = setInterval(() => {
+      if (hasTrackedRead.current) {
+        clearInterval(verificationTimer);
+        return;
+      }
+
+      const timeSpentSeconds = (Date.now() - startTime.current) / 1000;
+      
+      // HARD MODE: Required time is 40% of the actual post read time (min 20 seconds)
+      // e.g., A 5-minute read requires 120 seconds of dwell time.
+      const REQUIRED_DWELL_TIME = Math.max(20, (post.readTime * 60) * 0.4); 
+
+      if (maxScroll.current > 0.8 && timeSpentSeconds >= REQUIRED_DWELL_TIME) {
+        hasTrackedRead.current = true;
+        markPostRead(post.id);
+        earnCoins(1, 'read', 'Finished reading post', post.id); // Nerfed from 3 to 1
+        addXP(5, 'Deep read completed'); // Nerfed from 10 to 5
+        clearInterval(verificationTimer);
+      }
+    }, 1000);
+
+    return () => clearInterval(verificationTimer);
+  }, [post, markPostRead, earnCoins, addXP]);
 
   useEffect(() => {
     if (!post || hasTrackedRead.current) return;
@@ -80,39 +143,43 @@ const PostDetail = () => {
 
   const handleReaction = (emoji: string) => {
     if (activeReaction === emoji) {
-      // User clicked the same emoji again -> remove the reaction
       setActiveReaction(null);
     } else {
-      // User clicked a new emoji
-      const isFirstReaction = activeReaction === null;
       setActiveReaction(emoji);
-      
-      // Only award XP/Coins if this is their first reaction on the post
-      if (isFirstReaction) {
-        addXP(5, `Liked with ${emoji}`);
-        earnCoins(2, 'like', `Reacted ${emoji}`, post.id);
+      if (!hasRewardedForReaction.current) {
+        hasRewardedForReaction.current = true;
+        addXP(2, `Reacted ${emoji}`); // Nerfed from 5
+        earnCoins(1, 'like', `Reacted ${emoji}`, post.id); // Nerfed from 2
       }
     }
   };
+
   const handleShare = () => {
-    addXP(10, 'Shared a post');
-    earnCoins(5, 'share', 'Shared a post', post.id);
+    addXP(5, 'Shared a post'); // Nerfed from 10
+    earnCoins(2, 'share', 'Shared a post', post.id); // Nerfed from 5
     if (navigator.share) navigator.share({ title: post.title, url: window.location.href });
   };
 
   const handleComment = () => {
     if (!newComment.trim()) return;
+    
+    const commentText = newComment.trim();
     const comment: Comment = {
       id: crypto.randomUUID(),
       author: 'You',
       avatar: 'https://api.dicebear.com/9.x/adventurer/svg?seed=Guest',
-      text: newComment,
+      text: commentText,
       time: 'Just now',
     };
+    
     setComments(prev => [comment, ...prev]);
     setNewComment('');
-    addXP(10, 'Commented on a post');
-    earnCoins(4, 'comment', 'Commented on a post', post.id);
+
+    // HARD MODE: High-quality comment check (minimum 20 characters)
+    if (commentText.length >= 20) {
+      addXP(5, 'Insightful comment'); // Nerfed from 10
+      earnCoins(2, 'comment', 'Added a meaningful comment', post.id); // Nerfed from 4
+    }
   };
 
   return (

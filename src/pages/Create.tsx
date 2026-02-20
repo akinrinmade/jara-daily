@@ -20,13 +20,28 @@ const Create = () => {
   const [imageUrl, setImageUrl] = useState('');
 
   const handlePublish = () => {
+    // Strip HTML tags from TipTap to check actual text length
+    const plainTextBody = body.replace(/<[^>]*>?/gm, '').trim();
+
     if (!title || !body || !category) {
       toast({ title: 'Missing fields', description: 'Please fill in title, body, and category.', variant: 'destructive' });
       return;
     }
-    addXP(50, 'Published a post!');
-    earnCoins(8, 'post', 'Published a post!');
-    toast({ title: '🎉 Post Published!', description: '+50 XP & Coins earned!' });
+
+    // HARD MODE: Must be at least 150 characters to count as a real post
+    if (plainTextBody.length < 150) {
+      toast({ 
+        title: 'Post too short', 
+        description: 'Jara Daily requires high-quality content. Please write at least 150 characters.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    addXP(20, 'Published an article'); // Nerfed from 50 to 20
+    earnCoins(3, 'post', 'Published an article'); // Nerfed from 8 to 3
+    
+    toast({ title: '🎉 Post Published!', description: '+20 XP & Coins earned!' });
     setTitle(''); setBody(''); setCategory(''); setImageUrl('');
   };
 
