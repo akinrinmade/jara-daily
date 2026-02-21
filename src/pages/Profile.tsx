@@ -70,6 +70,7 @@ const Profile = () => {
               <LogOut className="h-3 w-3" /> Sign Out
             </button>
           </div>
+        </div> {/* <-- ADD THIS CLOSING DIV */}
 
         {/* XP Progress */}
         <Card className="mb-4">
