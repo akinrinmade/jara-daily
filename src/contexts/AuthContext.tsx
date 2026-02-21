@@ -13,6 +13,7 @@ interface Profile {
   streak_days: number;
   posts_read: number;
   saved_posts: string[];
+  role?: 'admin' | 'creator' | 'user';
 }
 
 interface AuthContextType {

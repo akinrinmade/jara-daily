@@ -20,6 +20,7 @@ export interface Post {
     name: string;
     avatar: string;
     rank: Rank;
+    role?: 'admin' | 'creator' | 'user';
   };
 }
 
@@ -46,6 +47,7 @@ export interface UserProfile {
   lastLoginDate: string;
   postsRead: number;
   savedPosts: string[];
+  role?: 'admin' | 'creator' | 'user';
 }
 
 export interface Notification {

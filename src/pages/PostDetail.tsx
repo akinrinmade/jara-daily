@@ -73,8 +73,8 @@ const PostDetail = () => {
         maxScroll.current = scrollDepth;
       }
 
-      // Soft-gate logic remains instant
-      if (post.isPremium && scrollDepth > 0.5) {
+      // Soft-gate logic: ONLY blur if it's premium AND the user is not logged in
+      if (post.isPremium && scrollDepth > 0.5 && !user) {
         setBlurred(true);
       }
     };
@@ -189,11 +189,13 @@ const PostDetail = () => {
           <div className="prose prose-sm max-w-none text-foreground leading-relaxed whitespace-pre-line">
             {post.content}
           </div>
-          {blurred && post.isPremium && (
+          {blurred && post.isPremium && !user && (
             <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-background via-background/90 to-transparent flex flex-col items-center justify-end pb-6">
               <p className="text-sm font-bold text-foreground mb-1">Sign up to unlock + earn XP & Coins</p>
               <p className="text-xs text-muted-foreground mb-3">Premium content for Jara Daily members</p>
-              <Button size="sm">Sign Up Free</Button>
+              <Button size="sm" asChild>
+                 <Link to="/auth">Sign Up Free</Link>
+              </Button>
             </div>
           )}
         </div>

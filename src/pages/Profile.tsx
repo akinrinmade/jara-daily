@@ -58,14 +58,18 @@ const Profile = () => {
             <Link to="/earnings" className="text-xs text-primary flex items-center gap-1 font-medium">
               <TrendingUp className="h-3 w-3" /> Earnings
             </Link>
-            <Link to="/admin" className="text-xs text-primary flex items-center gap-1 font-medium">
-              <Shield className="h-3 w-3" /> Admin
-            </Link>
+            
+            {/* ONLY show the Admin link if the user has the 'admin' role */}
+            {profile?.role === 'admin' && (
+              <Link to="/admin" className="text-xs text-primary flex items-center gap-1 font-medium bg-primary/10 px-2 py-1 rounded-md">
+                <Shield className="h-3 w-3" /> Admin
+              </Link>
+            )}
+
             <button onClick={() => { signOut(); navigate('/'); }} className="text-xs text-destructive flex items-center gap-1 font-medium">
               <LogOut className="h-3 w-3" /> Sign Out
             </button>
           </div>
-        </div>
 
         {/* XP Progress */}
         <Card className="mb-4">

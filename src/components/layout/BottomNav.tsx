@@ -2,19 +2,25 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, Compass, PlusCircle, Bell, User, Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGamification } from '@/contexts/GamificationContext';
-
-const tabs = [
-  { path: '/', icon: Home, label: 'Home' },
-  { path: '/discover', icon: Compass, label: 'Discover' },
-  { path: '/create', icon: PlusCircle, label: 'Create' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
-  { path: '/profile', icon: User, label: 'Profile' },
-];
+import { useAuth } from '@/contexts/AuthContext';
 
 export function BottomNav() {
   const location = useLocation();
   const { recentXPEvents } = useGamification();
+  const { profile } = useAuth(); // Get the user's profile to check their role
   const hasUnread = recentXPEvents.length > 0;
+
+  // Dynamically build the tabs based on role
+  const tabs = [
+    { path: '/', icon: Home, label: 'Home' },
+    { path: '/discover', icon: Compass, label: 'Discover' },
+    // ONLY show Create if they are a creator or admin
+    ...(profile?.role === 'creator' || profile?.role === 'admin' 
+        ? [{ path: '/create', icon: PlusCircle, label: 'Create' }] 
+        : []),
+    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/profile', icon: User, label: 'Profile' },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-area-bottom">
