@@ -39,17 +39,20 @@ export function CoinProvider({ children }: { children: ReactNode }) {
   });
 
   const refreshCoins = useCallback(async () => {
-    const [poolRes, profileRes] = await Promise.all([
-      supabase.from('coin_pool').select('remaining, total_supply').eq('id', 1).maybeSingle(),
-      user ? supabase.from('profiles').select('coins').eq('id', user.id).maybeSingle() : null,
-    ]);
-    setState(prev => ({
-      ...prev,
-      globalRemaining: poolRes.data?.remaining ?? prev.globalRemaining,
-      totalCoins: poolRes.data?.total_supply ?? prev.totalCoins,
-      userCoins: profileRes?.data?.coins ?? prev.userCoins,
-    }));
-  }, [user]);
+    const { data: poolRes } = await supabase
+      .from('coin_pool')
+      .select('remaining, total_supply')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (poolRes) {
+      setState(prev => ({
+        ...prev,
+        globalRemaining: poolRes.remaining ?? prev.globalRemaining,
+        totalCoins: poolRes.total_supply ?? prev.totalCoins,
+      }));
+    }
+  }, []);
 
   // Fetch global pool + sync user coins from profile
   useEffect(() => {
@@ -76,7 +79,7 @@ export function CoinProvider({ children }: { children: ReactNode }) {
     }
 
     // Use server-side atomic function with idempotency key
-    const idempotencyKey = `${user.id}_${sourceType}_${postId || 'none'}_${Date.now()}`;
+    const idempotencyKey = `${user.id}_${sourceType}_${postId || 'global'}`;
     const { data: earned, error } = await supabase.rpc('earn_coins', {
       p_user_id: user.id,
       p_source_type: sourceType as any,
@@ -85,8 +88,13 @@ export function CoinProvider({ children }: { children: ReactNode }) {
       p_idempotency_key: idempotencyKey,
     });
 
-    if (error || !earned) return 0;
-
+    if (error) {
+      console.error("SUPABASE ERROR IN earn_coins:", error.message);
+      return 0;
+    }
+    
+    if (!earned) return 0;
+    
     const event: CoinEvent = { id: crypto.randomUUID(), amount: earned, reason, timestamp: Date.now() };
     setState(prev => ({
       ...prev,
@@ -98,15 +106,29 @@ export function CoinProvider({ children }: { children: ReactNode }) {
     return earned;
   }, [user]);
 
-  const spendCoins = useCallback((amount: number, reason: string) => {
+  const spendCoins = useCallback(async (amount: number, reason: string) => {
     let success = false;
     setState(prev => {
       if (prev.userCoins < amount) return prev;
       success = true;
       return { ...prev, userCoins: prev.userCoins - amount };
     });
-    return success;
-  }, []);
+
+    if (!success || !user) return false;
+
+    const { error } = await supabase.rpc('spend_coins', {
+      p_user_id: user.id,
+      p_amount: amount
+    });
+
+    if (error) {
+      console.error("Failed to spend coins:", error);
+      setState(prev => ({ ...prev, userCoins: prev.userCoins + amount })); // Rollback
+      return false;
+    }
+
+    return true;
+  }, [user]);
 
   const dismissCoinEvent = useCallback((id: string) => {
     setState(prev => ({
