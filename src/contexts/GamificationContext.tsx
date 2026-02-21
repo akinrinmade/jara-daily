@@ -98,15 +98,15 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const markPostRead = useCallback((postId: string) => {
-    setState(prev => {
-      const newCount = prev.postsRead + 1;
-      if (user) {
-        supabase.from('profiles').update({ posts_read: newCount }).eq('id', user.id).then();
-      }
-      return { ...prev, postsRead: newCount };
-    });
-    addXP(10, 'Read a post');
-  }, [addXP, user]);
+  setState(prev => {
+    const newCount = prev.postsRead + 1;
+    if (user) {
+      supabase.from('profiles').update({ posts_read: newCount }).eq('id', user.id).then();
+    }
+    return { ...prev, postsRead: newCount };
+  });
+  addXP(5, 'Deep read completed'); // Changed from 10 to 5 here
+}, [addXP, user]);
 
   const dismissXPEvent = useCallback((id: string) => {
     setState(prev => ({

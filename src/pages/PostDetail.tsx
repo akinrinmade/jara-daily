@@ -54,7 +54,6 @@ const PostDetail = () => {
   const startTime = useRef(Date.now());
 
   // 1. Passive Scroll Tracker
-  // Only tracks how far down the user has scrolled, does NOT trigger rewards directly.
   useEffect(() => {
     if (!post) return;
     
@@ -82,7 +81,7 @@ const PostDetail = () => {
     
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [post]);
+  }, [post, post?.isPremium]); // <-- Added post?.isPremium to dependency array
 
   // 2. Behavioral Read Verification Engine (HARD MODE)
   useEffect(() => {
@@ -97,37 +96,17 @@ const PostDetail = () => {
       const timeSpentSeconds = (Date.now() - startTime.current) / 1000;
       
       // HARD MODE: Required time is 40% of the actual post read time (min 20 seconds)
-      // e.g., A 5-minute read requires 120 seconds of dwell time.
       const REQUIRED_DWELL_TIME = Math.max(20, (post.readTime * 60) * 0.4); 
 
       if (maxScroll.current > 0.8 && timeSpentSeconds >= REQUIRED_DWELL_TIME) {
         hasTrackedRead.current = true;
-        markPostRead(post.id);
-        earnCoins(1, 'read', 'Finished reading post', post.id); // Nerfed from 3 to 1
-        addXP(5, 'Deep read completed'); // Nerfed from 10 to 5
+        markPostRead(post.id); // Triggers the central XP reward
+        earnCoins(1, 'read', 'Finished reading post', post.id); 
         clearInterval(verificationTimer);
       }
     }, 1000);
 
     return () => clearInterval(verificationTimer);
-  }, [post, markPostRead, earnCoins, addXP]);
-
-  useEffect(() => {
-    if (!post || hasTrackedRead.current) return;
-    const handleScroll = () => {
-      if (!contentRef.current) return;
-      const rect = contentRef.current.getBoundingClientRect();
-      const totalHeight = contentRef.current.scrollHeight;
-      const scrollDepth = Math.min(1, (window.innerHeight - rect.top) / totalHeight);
-      if (post.isPremium && scrollDepth > 0.5) setBlurred(true);
-      if (scrollDepth > 0.8 && !hasTrackedRead.current) {
-        hasTrackedRead.current = true;
-        markPostRead(post.id);
-        earnCoins(3, 'read', 'Read a post', post.id);
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
   }, [post, markPostRead, earnCoins]);
 
   if (!post) {
@@ -148,15 +127,15 @@ const PostDetail = () => {
       setActiveReaction(emoji);
       if (!hasRewardedForReaction.current) {
         hasRewardedForReaction.current = true;
-        addXP(2, `Reacted ${emoji}`); // Nerfed from 5
-        earnCoins(1, 'like', `Reacted ${emoji}`, post.id); // Nerfed from 2
+        addXP(2, `Reacted ${emoji}`); 
+        earnCoins(1, 'like', `Reacted ${emoji}`, post.id); 
       }
     }
   };
 
   const handleShare = () => {
-    addXP(5, 'Shared a post'); // Nerfed from 10
-    earnCoins(2, 'share', 'Shared a post', post.id); // Nerfed from 5
+    addXP(5, 'Shared a post'); 
+    earnCoins(2, 'share', 'Shared a post', post.id); 
     if (navigator.share) navigator.share({ title: post.title, url: window.location.href });
   };
 
@@ -177,8 +156,8 @@ const PostDetail = () => {
 
     // HARD MODE: High-quality comment check (minimum 20 characters)
     if (commentText.length >= 20) {
-      addXP(5, 'Insightful comment'); // Nerfed from 10
-      earnCoins(2, 'comment', 'Added a meaningful comment', post.id); // Nerfed from 4
+      addXP(5, 'Insightful comment'); 
+      earnCoins(2, 'comment', 'Added a meaningful comment', post.id); 
     }
   };
 
@@ -293,7 +272,7 @@ const PostDetail = () => {
           </div>
         </section>
 
-        {/* Related */}
+        {/* Related Posts */}
         {relatedPosts.length > 0 && (
           <section className="mt-6">
             <h3 className="font-bold text-sm mb-3">Related Posts</h3>
